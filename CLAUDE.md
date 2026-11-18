@@ -4,8 +4,8 @@ Guidance for Claude Code when working in this repository.
 
 ## What this repo is
 
-An experiment around one question: for work with the trivalibs painter, which
-is better, a **statically typed library with a compile step on every change**
+An experiment around one question: for work with the trivalibs painter, which is
+better, a **statically typed library with a compile step on every change**
 (trivalibs in Scala.js) or a **dynamic library on a REPL with live coding**
 (trivalibs in squint)? The question applies to humans coding by hand, to agents,
 and to both together. Method and criteria:
@@ -39,15 +39,15 @@ Same workflow as trivalibs:
 - `documents/done/*.md`: finished plans, moved here unchanged except for a
   status line. Historical record of what was tried and why.
 - `documents/research/*.md`: research. `static-vs-live-workflow.md` is the
-  repo's central question; record evidence from milestones there. Not a
-  roadmap; never treat API sketches in research as decisions.
+  repo's central question; record evidence from milestones there. Not a roadmap;
+  never treat API sketches in research as decisions.
 - `trivalibs-scala/documents/`: the Scala library's design history. The
   `rust-painter/` and `done/` documents describe the painter model this port
   would carry over.
 
 Work plan-first: for a non-trivial step, write or update the plan, then
-implement, then record findings. When a finding contradicts the plan, update
-the plan text, not just the code.
+implement, then record findings. When a finding contradicts the plan, update the
+plan text, not just the code.
 
 ## Conventions
 
@@ -75,7 +75,7 @@ the plan text, not just the code.
 
 ## Agents and the REPL
 
-Agents work through the running sketch's REPL, not only through files. The
-setup is milestone 1's subject; once it works, this section holds the exact
-commands (start the dev server, eval a form, read back a frame). Until then:
-never assume REPL output, run it.
+Agents work through the running sketch's REPL, not only through files. The setup
+is milestone 1's subject; once it works, this section holds the exact commands
+(start the dev server, eval a form, read back a frame). Until then: never assume
+REPL output, run it.

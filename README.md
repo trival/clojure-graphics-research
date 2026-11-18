@@ -1,8 +1,8 @@
 # trivalibs in squint — an experiment
 
 [trivalibs](https://github.com/trivial-space/trivalibs-scala) is a Scala.js
-library for creative coding with WebGPU: a painter, a shader DSL, math and
-typed buffers. This repo explores the same library in
+library for creative coding with WebGPU: a painter, a shader DSL, math and typed
+buffers. This repo explores the same library in
 [squint](https://github.com/squint-cljs/squint), ClojureScript syntax compiled
 to plain JavaScript.
 

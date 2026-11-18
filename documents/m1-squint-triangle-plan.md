@@ -7,12 +7,12 @@ The first test of the squint direction from
 triangle is the vehicle. What gets evaluated is the working environment around
 it:
 
-| #   | Question                                                                                                                                   | Why it decides things                                                                     |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
-| Q1  | **Editor**: do hover, signature help and completion show our docstrings and options maps well enough to explore an API without the source? | The painter API is mostly optional parameters and configuration. Research §8 risk.        |
-| Q2  | **Browser REPL**: can a human eval into the running page from the editor, and does hot reload keep the GPU state?                          | Research goals N1/N2.                                                                     |
-| Q3  | **Agents**: can Claude Code eval into the same page, inspect values and see the rendered frame?                                            | Research goal N3; trivalibs is written by agents and by hand.                             |
-| Q4  | **WebGPU from squint**: how do descriptors, async and typed arrays read, and what does the output cost?                                     | Interop and bundle size are the reasons for squint over ClojureScript.                    |
+| #   | Question                                                                                                                                   | Why it decides things                                                              |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
+| Q1  | **Editor**: do hover, signature help and completion show our docstrings and options maps well enough to explore an API without the source? | The painter API is mostly optional parameters and configuration. Research §8 risk. |
+| Q2  | **Browser REPL**: can a human eval into the running page from the editor, and does hot reload keep the GPU state?                          | Research goals N1/N2.                                                              |
+| Q3  | **Agents**: can Claude Code eval into the same page, inspect values and see the rendered frame?                                            | Research goal N3; trivalibs is written by agents and by hand.                      |
+| Q4  | **WebGPU from squint**: how do descriptors, async and typed arrays read, and what does the output cost?                                    | Interop and bundle size are the reasons for squint over ClojureScript.             |
 
 These are the environment prerequisites for the repo's main comparison,
 [research/static-vs-live-workflow.md](research/static-vs-live-workflow.md). Q2
@@ -27,9 +27,8 @@ exercise Q1–Q4.
 From the squint docs and the #squint Slack channel; to be confirmed in step 1.
 
 - **Vite plugin** `squint-cljs/vite` (Vite 5–8) compiles `:paths` from
-  `squint.edn`, hot-reloads changed `.cljs` modules, runs
-  `^:dev/before-load` / `^:dev/after-load` hooks, and injects the `:main`
-  namespace into `index.html`.
+  `squint.edn`, hot-reloads changed `.cljs` modules, runs `^:dev/before-load` /
+  `^:dev/after-load` hooks, and injects the `:main` namespace into `index.html`.
 - **Browser nREPL**: `vite dev` starts an nREPL server on port **1339**, writes
   `.nrepl-port`, and routes evals over Vite's HMR socket into the page.
   Announced as working in July 2026 (`examples/browser-repl`); the maintainer
@@ -68,17 +67,17 @@ examples/triangle/triangle.cljs  the sketch
 squint compiles from npm (`squint-cljs`) and needs no JVM. Everything else is
 editor and agent tooling, installed once on the host:
 
-| Tool                 | For                                     | Install                                   |
-| -------------------- | --------------------------------------- | ----------------------------------------- |
-| Calva (VS Code)      | editor, REPL client; bundles clojure-lsp | VS Code extension `betterthantomorrow.calva` |
-| clj-kondo            | linting from the CLI, for agents         | binary release or package manager         |
-| babashka (`bb`)      | runs `bbin` and `clj-nrepl-eval`         | binary release or package manager         |
-| bbin                 | installs babashka scripts                | per its README                            |
-| `clj-nrepl-eval`     | agent evals over nREPL                   | `bbin install`, per clojure-mcp-light README |
+| Tool             | For                                      | Install                                      |
+| ---------------- | ---------------------------------------- | -------------------------------------------- |
+| Calva (VS Code)  | editor, REPL client; bundles clojure-lsp | VS Code extension `betterthantomorrow.calva` |
+| clj-kondo        | linting from the CLI, for agents         | binary release or package manager            |
+| babashka (`bb`)  | runs `bbin` and `clj-nrepl-eval`         | binary release or package manager            |
+| bbin             | installs babashka scripts                | per its README                               |
+| `clj-nrepl-eval` | agent evals over nREPL                   | `bbin install`, per clojure-mcp-light README |
 
 A JVM (`clojure` CLI) is needed only if the full `clojure-mcp` server is tried
-in step 6. Record versions and install commands here. Calva may download its
-own clojure-lsp; check that it does not need a JVM for squint projects.
+in step 6. Record versions and install commands here. Calva may download its own
+clojure-lsp; check that it does not need a JVM for squint projects.
 
 ### 1. squint spike
 
@@ -146,16 +145,16 @@ Setup: VS Code + Calva (bundles clojure-lsp); clj-kondo CLI for agents.
 Test each, with and without a connected REPL (Calva uses the nREPL `info` /
 `complete` ops when connected, clojure-lsp otherwise):
 
-| Check                                                                         | Result |
-| ----------------------------------------------------------------------------- | ------ |
-| Hover on `painter/init` shows docstring, rendered markdown                    |        |
-| Signature help shows the destructured options map with `:or` defaults         |        |
-| `painter/` completion lists the namespace's functions with doc                |        |
-| Completion of option keys inside `{…}` at a call site                         |        |
-| Unknown option key flagged (clj-kondo `:type-mismatch` map-key spec, below)   |        |
-| Go-to-definition from the sketch into the library                             |        |
-| squint forms (`js-await`, `^:async`, `js/…` interop) lint without noise       |        |
-| Hover / completion on WebGPU interop (`.createBuffer`) — expected: nothing    |        |
+| Check                                                                       | Result |
+| --------------------------------------------------------------------------- | ------ |
+| Hover on `painter/init` shows docstring, rendered markdown                  |        |
+| Signature help shows the destructured options map with `:or` defaults       |        |
+| `painter/` completion lists the namespace's functions with doc              |        |
+| Completion of option keys inside `{…}` at a call site                       |        |
+| Unknown option key flagged (clj-kondo `:type-mismatch` map-key spec, below) |        |
+| Go-to-definition from the sketch into the library                           |        |
+| squint forms (`js-await`, `^:async`, `js/…` interop) lint without noise     |        |
+| Hover / completion on WebGPU interop (`.createBuffer`) — expected: nothing  |        |
 
 Option-key checking candidate, in `.clj-kondo/config.edn`:
 
@@ -178,8 +177,8 @@ docstring list, destructured arglist alone, `:arglists` metadata override.
 - Eval a form in `triangle.cljs` that changes the clear color: the next frame
   shows it, no reload.
 - Redefine a function called from the frame loop: takes effect without a hook?
-  Redefine one captured in `requestAnimationFrame`: confirm it does not, and
-  how the loop must be written so it does.
+  Redefine one captured in `requestAnimationFrame`: confirm it does not, and how
+  the loop must be written so it does.
 - Save the file with a changed WGSL string: `^:dev/after-load` rebuilds the
   pipeline, the device survives.
 - Time a tunable edit from save to new frame. Target: well under a second
@@ -188,11 +187,11 @@ docstring list, destructured arglist alone, `:arglists` metadata override.
 
 ### 6. Agent REPL (Q3)
 
-- With `clj-nrepl-eval` from step 0, the agent evals from Claude Code via
-  Bash: `clj-nrepl-eval -p 1339 "(…)"`.
+- With `clj-nrepl-eval` from step 0, the agent evals from Claude Code via Bash:
+  `clj-nrepl-eval -p 1339 "(…)"`.
 - The dev server runs outside the agent, started by the human (or by the agent
-  as a background task); the sandbox must allow the localhost connection.
-  Record what was needed.
+  as a background task); the sandbox must allow the localhost connection. Record
+  what was needed.
 - **Eyes**: `trivalibs.dev/snapshot` reads the canvas back (`toDataURL`, or a
   `copyTextureToBuffer` readback) and returns a data URL; a small script turns
   it into a PNG the agent can open. Check that an agent can change the color by
@@ -207,13 +206,13 @@ docstring list, destructured arglist alone, `:arglists` metadata override.
 - `vite build`: bundle size, minified and gzipped, against the Scala
   `base-triangle` example (`trivalibs-scala/examples/`, `jsMode full`).
 - Read the emitted JS for `painter.cljs`: are the squint runtime pieces pulled
-  in, and which? Any surprises in how `defn` with destructured options
-  compiles (allocation per call)?
+  in, and which? Any surprises in how `defn` with destructured options compiles
+  (allocation per call)?
 
 ## Done when
 
-- The triangle renders in the browser from squint source, through the
-  documented painter functions.
+- The triangle renders in the browser from squint source, through the documented
+  painter functions.
 - A human edits it live from the editor and an agent edits and inspects it
   through the REPL, with the commands in `CLAUDE.md`.
 - Findings below are filled in, ending with a recommendation: continue to the

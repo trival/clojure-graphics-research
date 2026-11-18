@@ -1,28 +1,28 @@
 # Static or live: which workflow for the trivalibs painter
 
-**Status: research method, findings pending.** This is the main question of
-this repo. The milestones are there to produce the evidence.
+**Status: research method, findings pending.** This is the main question of this
+repo. The milestones are there to produce the evidence.
 
 ## Question
 
 For work with the trivalibs painter, which is more beneficial:
 
-- **S (static)**: trivalibs in Scala.js. Types check every call site, the
-  editor completes on types, and each change costs compile + link + page reload.
+- **S (static)**: trivalibs in Scala.js. Types check every call site, the editor
+  completes on types, and each change costs compile + link + page reload.
 - **L (live)**: trivalibs in squint. Edits are hot-reloaded or evaluated into
-  the running sketch, and humans and agents work in a REPL. Errors appear at
-  run time, and completion works on namespaces, not on types.
+  the running sketch, and humans and agents work in a REPL. Errors appear at run
+  time, and completion works on namespaces, not on types.
 
 "Beneficial" means: more and better sketch work per hour of human attention,
 from humans coding by hand, from agents, and from the two together.
 
 ## What the first round left open
 
-`trivalibs-scala/documents/research/clojurescript-port-research.md` settled
-that a port is **feasible**. It argued the trade-off from structure: S cannot
-get below a few seconds per edit (§2), and L loses completion, compile-time
-errors and refactoring safety (§8). It measured nothing on the L side (§14) and
-did not ask:
+`trivalibs-scala/documents/research/clojurescript-port-research.md` settled that
+a port is **feasible**. It argued the trade-off from structure: S cannot get
+below a few seconds per edit (§2), and L loses completion, compile-time errors
+and refactoring safety (§8). It measured nothing on the L side (§14) and did not
+ask:
 
 1. **How often each kind of edit happens.** If most edits in real sketch work
    are tunables, a cheaper path for S (the content registry plus tunables
@@ -41,9 +41,9 @@ did not ask:
    rules in L are enough to learn the painter API, compared with type-driven
    completion in S.
 6. **Middle ground.** How much of S's safety L can get back (clj-kondo type and
-   map-key specs, runtime checks only in dev, headless smoke runs), and how
-   much of L's liveness S can get (registry, host tunables, `smallestmodules`
-   with Vite).
+   map-key specs, runtime checks only in dev, headless smoke runs), and how much
+   of L's liveness S can get (registry, host tunables, `smallestmodules` with
+   Vite).
 
 ## Method
 
@@ -53,15 +53,15 @@ Comparative, on real painter work, with the same tasks done in both.
 
 Picked from what sketch work actually consists of:
 
-| #   | Task                                                                     | Mostly tests              |
-| --- | ------------------------------------------------------------------------ | ------------------------- |
-| T1  | Tune constants until a look is right (colors, fades, sizes)              | latency, flow             |
-| T2  | Change a shader body (new lighting term, noise layer)                    | latency, shader errors    |
-| T3  | Add a structural element: new panel, effect pass, bake                   | hot reconfiguration, API  |
-| T4  | Use a painter feature not used before, from editor help alone            | discoverability           |
-| T5  | Find a visual bug (wrong panel bound, bad blend, NaN in a shader)         | inspection                |
-| T6  | Change the library API and update every sketch that uses it              | refactoring safety        |
-| T7  | Write a new small sketch from a description                              | everything, end to end    |
+| #   | Task                                                              | Mostly tests             |
+| --- | ----------------------------------------------------------------- | ------------------------ |
+| T1  | Tune constants until a look is right (colors, fades, sizes)       | latency, flow            |
+| T2  | Change a shader body (new lighting term, noise layer)             | latency, shader errors   |
+| T3  | Add a structural element: new panel, effect pass, bake            | hot reconfiguration, API |
+| T4  | Use a painter feature not used before, from editor help alone     | discoverability          |
+| T5  | Find a visual bug (wrong panel bound, bad blend, NaN in a shader) | inspection               |
+| T6  | Change the library API and update every sketch that uses it       | refactoring safety       |
+| T7  | Write a new small sketch from a description                       | everything, end to end   |
 
 Each task is done by a human by hand, by an agent alone, and by a human
 directing an agent.
@@ -72,8 +72,8 @@ directing an agent.
 - **Iterations to done**, and time to done.
 - **Errors**: where each was caught (compiler, lint, run time, by eye) and the
   time from introducing it to fixing it.
-- **Lost state**: how often a change forced a reload or a reset of camera,
-  time or input.
+- **Lost state**: how often a change forced a reload or a reset of camera, time
+  or input.
 - **Agent sessions**: steps, tokens, the feedback signals used, and whether the
   result was right on the first look.
 - **Subjective**: a short note after each session: flow, frustration, whether
@@ -87,9 +87,9 @@ How each number was taken is written down next to it, so it can be repeated.
 ### Prerequisites
 
 T1–T2 need only a minimal painter in L (milestone 1 plus a few shades). T3–T7
-need enough of the painter for a real sketch: the vertical slice of research
-§13 option C. S is measured on the existing Scala sketches, on the host with a
-warm `sketch:watch`, not in the sandbox.
+need enough of the painter for a real sketch: the vertical slice of research §13
+option C. S is measured on the existing Scala sketches, on the host with a warm
+`sketch:watch`, not in the sandbox.
 
 ## Hypotheses
 
