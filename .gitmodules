@@ -1,0 +1,3 @@
+[submodule "trivalibs-scala"]
+	path = trivalibs-scala
+	url = https://github.com/trivial-space/trivalibs-scala.git
