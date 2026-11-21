@@ -1,0 +1,8 @@
+{
+	"name": "trivalibs-cljs",
+	"private": true,
+	"type": "module",
+	"devDependencies": {
+		"squint-cljs": "0.16.214"
+	}
+}

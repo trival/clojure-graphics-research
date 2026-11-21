@@ -1,0 +1,19 @@
+{
+  "lockfileVersion": 2,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "trivalibs-cljs",
+      "devDependencies": {
+        "squint-cljs": "0.16.214",
+      },
+    },
+  },
+  "packages": {
+    "chokidar": ["chokidar@4.0.3", "", { "dependencies": { "readdirp": "^4.0.1" } }, "sha512-Qgzu8kfBvo+cA4962jnP1KkS6Dop5NS6g7R5LFYJr4b8Ub94PPQXUksCw9PvXoeXPRRddRNC5C1JQUR2SMGtnA=="],
+
+    "readdirp": ["readdirp@4.1.2", "", {}, "sha512-GDhwkLfywWL2s6vEjyhri+eXmfH6j1L7JE27WhqLeYzoh/A3DBaYGEj2H/HFZCn/kMfim73FXxEJTw06WtxQwg=="],
+
+    "squint-cljs": ["squint-cljs@0.16.214", "", { "dependencies": { "chokidar": "^4.0.3" }, "bin": { "squint": "node_cli.js" } }, "sha512-UwuUS92kPWTsLvVO3K4Qsor741BEhm6wrVvqd0gY8RUgbLTdzwH5GAZ06lBnO5maqJWD964hdLs/64+9G2vk3A=="],
+  }
+}

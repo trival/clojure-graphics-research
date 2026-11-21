@@ -27,8 +27,21 @@ documents that shaped them. Never edit it from this repo.
 
 ## Build & Dev Commands
 
-None yet; milestone 1 sets them up (`documents/m1-squint-triangle-plan.md`).
+Milestone 1 sets up the dev server (`documents/m1-squint-triangle-plan.md`).
 Record each command here when it exists.
+
+- Install: `bun install`. Inside the Claude sandbox bun needs
+  `BUN_TMPDIR=$TMPDIR BUN_INSTALL_CACHE_DIR=$TMPDIR/bun-cache` (EROFS otherwise).
+- Experiments (`experiments/<name>/`, own `squint.edn`, output in `out/`):
+  `cd experiments/math-dispatch && ../../node_modules/.bin/squint compile src/bench/*.cljs`,
+  then `node out/bench/<file>.mjs` / `bun out/bench/<file>.mjs`. Benchmarks
+  state their method in the research document that uses them.
+
+squint pitfalls found so far (details in
+`documents/research/uniform-math-operators.md` §1–2): no functions named `+`,
+`*`, `+=` (compiled as infix operators, invalid JS); `deftype` methods are
+broken, use `defclass`; predicates as `^boolean (js* …)` macros, or every `if`
+pays `truth_`; `instance?` emits an IIFE; `~'js*` inside syntax-quote.
 
 ## Documents
 
