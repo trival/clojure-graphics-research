@@ -3,7 +3,7 @@
 **Status: planned.**
 
 The first test of the squint direction from
-`trivalibs-scala/documents/research/clojurescript-port-research.md`. A WebGPU
+[research/clojurescript-port-research.md](research/clojurescript-port-research.md). A WebGPU
 triangle is the vehicle. What gets evaluated is the working environment around
 it:
 

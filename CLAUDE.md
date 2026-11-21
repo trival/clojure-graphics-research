@@ -12,7 +12,8 @@ and to both together. Method and criteria:
 `documents/research/static-vs-live-workflow.md`. Every milestone feeds evidence
 into it.
 
-It follows `trivalibs-scala/documents/research/clojurescript-port-research.md`,
+It follows `documents/research/clojurescript-port-research.md` (first round,
+written in the Scala repo, moved here),
 with one change: squint, not shadow-cljs. squint's JS-native data, plain ES
 modules and small output match the library goals (research G5, G6) without a
 persistent-collection runtime.

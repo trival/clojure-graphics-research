@@ -23,8 +23,8 @@ compares them on real painter work rather than deciding by argument.
 
 The method and criteria are in
 [documents/research/static-vs-live-workflow.md](documents/research/static-vs-live-workflow.md).
-It builds on the first round of research in the Scala repo,
-[clojurescript-port-research.md](trivalibs-scala/documents/research/clojurescript-port-research.md).
+It builds on the first round of research,
+[clojurescript-port-research.md](documents/research/clojurescript-port-research.md).
 
 ## Layout
 
