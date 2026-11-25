@@ -1,0 +1,88 @@
+scala out-class mixOps             node   13.17  bun   19.77  gc    789
+scala out-class mixMethod          node   11.75  bun   11.40  gc    774
+scala out-class mixSelf            node   14.75  bun   23.04  gc    763
+scala out-class mixClassHand       node    6.84  bun    8.39  gc    762
+scala out-class mixF64Hand         node    1.57  bun    1.41  gc      2
+scala out-class partOps            node   82.73  bun   46.58  gc    397
+scala out-class partSelf           node   38.57  bun   28.55  gc    411
+scala out-class partSelfNoAlloc    node   29.17  bun   29.36  gc      9
+scala out-class partClassHand      node    5.36  bun    4.53  gc     10
+scala out-class partF64Per         node   11.25  bun    5.49  gc     12
+scala out-class partF64Packed      node    4.83  bun    2.86  gc      6
+scala out-class partF32Packed      node    7.05  bun    5.32  gc     16
+scala out-class comboV3AddV3       node   10.31  bun    8.83  gc    454
+scala out-class comboV3MulS        node    9.87  bun    7.66  gc    774
+scala out-class comboV4MulV4       node   13.25  bun    9.27  gc    771
+scala out-class comboM4MulV4       node   19.57  bun   20.80  gc    389
+scala out       mixOps             node   15.06  bun   21.98  gc    395
+scala out       mixMethod          node   13.35  bun   11.44  gc    388
+scala out       mixSelf            node   17.22  bun   27.82  gc    384
+scala out       mixClassHand       node    7.60  bun    8.97  gc    384
+scala out       mixF64Hand         node    1.85  bun    1.84  gc      4
+scala out       partOps            node   86.35  bun   52.72  gc    398
+scala out       partSelf           node   45.67  bun   27.26  gc    413
+scala out       partSelfNoAlloc    node   37.47  bun   28.48  gc     10
+scala out       partClassHand      node    5.12  bun    4.18  gc     11
+scala out       partF64Per         node    9.65  bun    4.67  gc     13
+scala out       partF64Packed      node    5.66  bun    2.77  gc      5
+scala out       partF32Packed      node    6.65  bun    5.01  gc     10
+scala out       comboV3AddV3       node    9.72  bun    8.36  gc    227
+scala out       comboV3MulS        node    9.60  bun    6.95  gc    387
+scala out       comboV4MulV4       node   12.09  bun    9.08  gc    387
+scala out       comboM4MulV4       node   17.87  bun   23.15  gc    391
+scala out       mixTuple           node   17.69  bun   20.16  gc    392
+scala out       mixStructF32       node   37.73  bun   28.11  gc    770
+scala out       mixStructF64       node   34.45  bun   24.49  gc    768
+scala out       mixStructF64Hand   node    4.05  bun    5.12  gc      3
+scala out       partStructF32      node 1299.80  bun   66.53  gc   2913
+scala out       partStructF64      node 1281.60  bun   62.46  gc   2912
+scala out       partDataViewF32    node   14.90  bun   21.22  gc     10
+scala out       comboT3AddT3       node   11.40  bun    8.39  gc    227
+scala out       swayOps            node  179.18  bun  123.32  gc  13250
+scala out       swayHandF32        node   42.25  bun   31.79  gc      7
+scala out       camViewProj        node  292.61  bun  274.64  gc   6926
+scala out       pMixOps            node    7.51  bun    8.17  gc    395
+scala out       pMixTuple          node    8.19  bun    5.18  gc    382
+scala out       pMixSelf           node   11.44  bun   14.58  gc    384
+scala out       pMixJRef           node    9.46  bun    9.88  gc      6
+scala out       pMixSRef           node   11.98  bun    9.96  gc      5
+scala out       pMixFRef           node    7.41  bun    4.33  gc      7
+scala out       pPartOps           node   60.52  bun   29.27  gc    255
+scala out       pPartSelfNoAlloc   node    7.90  bun   12.27  gc     12
+scala out       pPartJRef          node  644.86  bun   58.09  gc   7273
+scala out       pPartSRef          node   27.64  bun   46.95  gc     16
+scala out       pPartFRef          node   23.44  bun   34.69  gc     21
+squint mix       cpu                node    1.77  bun    1.52  gc      4
+squint mix       hand               node    1.77  bun    1.53  gc      3
+squint mix       typed-alloc        node    7.47  bun    1.90  gc    776
+squint mix       gl                 node   38.34  bun   31.59  gc  14884
+squint particles cpu                node   15.24  bun    5.18  gc     26
+squint particles hand               node   14.43  bun    4.68  gc     26
+squint particles class-inplace      node   39.83  bun    4.34  gc    119
+squint particles mono-alloc         node   32.44  bun   30.05  gc    166
+squint particles gl                 node   64.86  bun   83.53  gc    355
+squint combos    vec3+vec3          node    7.60  bun    3.84
+squint combos    vec3*f32           node    7.45  bun    2.83
+squint combos    vec4*vec4          node    9.56  bun    4.89
+squint combos    mat4*vec4          node    7.39  bun    6.87
+--- shared combos, class-only build (node)
+comboV3AddV3              9.79 ns/op   (checksum 2557420544)
+comboV3MulS               8.81 ns/op   (checksum 436242187896)
+comboV4MulV4             10.46 ns/op   (checksum 435603005712)
+comboM4MulV4             17.70 ns/op   (checksum 4893466016.264236)
+--- shared combos, full build (node)
+comboT3AddT3             11.95 ns/op   (checksum 2557420544)
+comboV3AddV3             17.07 ns/op   (checksum 2557420544)
+comboV3MulS               9.55 ns/op   (checksum 436242187896)
+comboV4MulV4             10.60 ns/op   (checksum 435603005712)
+comboM4MulV4             17.01 ns/op   (checksum 4893466016.264236)
+--- shared combos, full build (bun)
+comboT3AddT3              8.49 ns/op   (checksum 2557420544)
+comboV3AddV3             10.22 ns/op   (checksum 2557420544)
+comboV3MulS               7.04 ns/op   (checksum 436242187896)
+comboV4MulV4              9.09 ns/op   (checksum 435603005712)
+comboM4MulV4             18.20 ns/op   (checksum 4893466016.264236)
+pPartJCursor             17.51 ns/op   (checksum -99.85994720458984) | bun 12.28 ns/op | gc 11
+pPartFCursor             18.42 ns/op   (checksum -99.85994720458984) | bun 10.06 ns/op | gc 13
+pPartFRef                17.96 ns/op   (checksum -99.85994720458984) | bun 35.71 ns/op | gc 22
+partF32Packed             6.31 ns/op   (checksum -99.85994720458984) | bun 4.93 ns/op | gc 11

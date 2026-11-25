@@ -3,3 +3,5 @@ node_modules/
 js/
 dist/
 experiments/*/out/
+experiments/*/out-class/
+experiments/*/.scala-build/

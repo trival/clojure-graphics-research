@@ -1,0 +1,23 @@
+{
+  "name": "scala-cli",
+  "argv": [
+    "/home/trival/.local/share/coursier/bin/.scala-cli.aux",
+    "--power",
+    "bsp",
+    "--json-options",
+    "/home/trival/code/personal/clojure/graphics/experiments/scala-math/.scala-build/ide-options-v2.json",
+    "--json-launcher-options",
+    "/home/trival/code/personal/clojure/graphics/experiments/scala-math/.scala-build/ide-launcher-options.json",
+    "--envs-file",
+    "/home/trival/code/personal/clojure/graphics/experiments/scala-math/.scala-build/ide-envs.json",
+    "/home/trival/code/personal/clojure/graphics/experiments/scala-math/bench",
+    "/home/trival/code/personal/clojure/graphics/trivalibs-scala/src",
+    "/home/trival/code/personal/clojure/graphics/experiments/scala-math/project.scala"
+  ],
+  "version": "1.18.0",
+  "bspVersion": "2.1.1",
+  "languages": [
+    "scala",
+    "java"
+  ]
+}

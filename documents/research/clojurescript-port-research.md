@@ -11,15 +11,15 @@ agents can attach to.
 
 - **trivalibs-scala**
   ([github.com/trivial-space/trivalibs-scala](https://github.com/trivial-space/trivalibs-scala),
-  the library, submodule `trivalibs-scala/` here): `README.md`, `CLAUDE.md`,
-  the guides, `graphics/…`, `painter/`, `math/`, `geometry/`, `utils/`, the
-  examples and tests, `f32-array-plan.md`.
+  the library, submodule `trivalibs-scala/` here): `README.md`, `CLAUDE.md`, the
+  guides, `graphics/…`, `painter/`, `math/`, `geometry/`, `utils/`, the examples
+  and tests, `f32-array-plan.md`.
 - **sketches-scala**
   ([github.com/trivial-space/sketches-scala](https://github.com/trivial-space/sketches-scala),
   the sketch repo consuming trivalibs as a submodule, not part of this repo):
-  `sketches/` (e.g. `sketches/rooms/columns`), its `src/`
-  sketch utilities (bloom, mirror, bake, room), `dev.scala` / `devPreserve`,
-  `sketch:watch`, the write-sketch skill. The §2 timings were measured there.
+  `sketches/` (e.g. `sketches/rooms/columns`), its `src/` sketch utilities
+  (bloom, mirror, bake, room), `dev.scala` / `devPreserve`, `sketch:watch`, the
+  write-sketch skill. The §2 timings were measured there.
 
 Short answer:
 
@@ -27,8 +27,9 @@ Short answer:
   compile-time derivation has a ClojureScript counterpart, either a macro or
   plain runtime data.
 - **The live loop is the one thing Scala.js cannot match.** Measured in
-  sketches-scala: a one-constant edit in `rooms/columns` costs 5–9 s, split about evenly between
-  scalac and the Scala.js linker. Neither half has a cheap fix (§2).
+  sketches-scala: a one-constant edit in `rooms/columns` costs 5–9 s, split
+  about evenly between scalac and the Scala.js linker. Neither half has a cheap
+  fix (§2).
 - **Two things get better than today**: math and noise kernels written once for
   CPU and GPU (today they are written twice), and a shader AST instead of
   strings (shared subexpressions, real error messages).

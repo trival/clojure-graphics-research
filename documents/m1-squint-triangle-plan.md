@@ -3,9 +3,9 @@
 **Status: planned.**
 
 The first test of the squint direction from
-[research/clojurescript-port-research.md](research/clojurescript-port-research.md). A WebGPU
-triangle is the vehicle. What gets evaluated is the working environment around
-it:
+[research/clojurescript-port-research.md](research/clojurescript-port-research.md).
+A WebGPU triangle is the vehicle. What gets evaluated is the working environment
+around it:
 
 | #   | Question                                                                                                                                   | Why it decides things                                                              |
 | --- | ------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |

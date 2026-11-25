@@ -18,10 +18,10 @@ from humans coding by hand, from agents, and from the two together.
 
 ## What the first round left open
 
-[clojurescript-port-research.md](clojurescript-port-research.md) settled that
-a port is **feasible**. It argued the trade-off from structure: S cannot get
-below a few seconds per edit (§2), and L loses completion, compile-time errors
-and refactoring safety (§8). It measured nothing on the L side (§14) and did not
+[clojurescript-port-research.md](clojurescript-port-research.md) settled that a
+port is **feasible**. It argued the trade-off from structure: S cannot get below
+a few seconds per edit (§2), and L loses completion, compile-time errors and
+refactoring safety (§8). It measured nothing on the L side (§14) and did not
 ask:
 
 1. **How often each kind of edit happens.** If most edits in real sketch work

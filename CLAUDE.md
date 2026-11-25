@@ -36,6 +36,11 @@ Record each command here when it exists.
   `cd experiments/math-dispatch && ../../node_modules/.bin/squint compile src/bench/*.cljs`,
   then `node out/bench/<file>.mjs` / `bun out/bench/<file>.mjs`. Benchmarks
   state their method in the research document that uses them.
+- Scala experiments (`experiments/scala-math/`, compiled against
+  `trivalibs-scala/src`, `smallestmodules`): build commands in
+  `documents/research/scala-math-buffer-analysis.md`. scala-cli's JS linker
+  writes to `/tmp`, so `package` fails inside the Claude sandbox; run it
+  outside. Clear `.scala-build` before comparing emitted JS.
 
 squint pitfalls found so far (details in
 `documents/research/uniform-math-operators.md` §1–2): no functions named `+`,

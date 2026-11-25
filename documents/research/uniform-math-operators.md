@@ -622,6 +622,11 @@ For when this direction is taken up as a milestone plan
 
 ### 9.4 Comparison with the Scala library
 
+First round done in
+[scala-math-buffer-analysis.md](scala-math-buffer-analysis.md): the workloads
+below, ported to Scala in `experiments/scala-math/` (against the submodule, not
+in the Scala repo), with the emitted JS read per class.
+
 The point of the milestone is to compare. To make the comparison fair, the same
 workloads should exist on both sides, measured the same way:
 
