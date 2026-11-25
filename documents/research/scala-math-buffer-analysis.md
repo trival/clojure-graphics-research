@@ -1,17 +1,18 @@
 # Scala math and buffer API — lessons from the squint dispatch research
 
-**Status: research with measurements; nothing changed in trivalibs-scala.**
-Follow-up to [uniform-math-operators.md](uniform-math-operators.md) §9.4 (the
-Scala comparison). It reads the Scala library's emitted JS the way that document
-read squint's, times the same workloads, and proposes changes to the Scala math
-and buffer API. The changes go to the Scala repo only after this document has
-been reviewed.
+**Status: research with measurements and a roadmap (§7); nothing changed in
+trivalibs-scala.** Follow-up to
+[uniform-math-operators.md](uniform-math-operators.md) §9.4 (the Scala
+comparison). It reads the Scala library's emitted JS the way that document read
+squint's, times the same workloads, and proposes changes to the Scala math and
+buffer API. The changes go to the Scala repo only after this document has been
+reviewed.
 
 **Question.** Do the squint findings apply to the Scala library: shared generic
-code losing type specialization (§5), allocation in vector expressions,
-boxed-double fields, typed-array storage? Which changes would make the Scala
-math and `StructRef` / `StructArray` API faster on render-loop paths? How does
-Scala compare with the fastest squint forms?
+code losing type specialization (squint document §5), allocation in vector
+expressions, boxed-double fields, typed-array storage? Which changes would make
+the Scala math and `StructRef` / `StructArray` API faster on render-loop paths?
+How does Scala compare with the fastest squint forms?
 
 Short answer:
 
@@ -42,6 +43,12 @@ Short answer:
      (JSC), both with inline ops (1,300 / 67 with the library today).
   3. Buffer storage through `Float32Array` instead of `DataView` for 4-byte
      fields: 2.2× (V8) to 4.2× (JSC) on a packed particle loop.
+
+  `@inline` ref classes (§4.3) make a buffer ref cost nothing. Since the painter
+  only ever writes flat f32 data, the roadmap (§7) replaces `StructArray` in the
+  core with Float32Array buffers and inline writers, after inlining the math
+  ops.
+
 - **The per-frame cost in real sketches is small.** The `rooms/canvases` sway
   loop costs 11 µs per frame for 64 paintings, the camera 0.3 µs (§2.4). The
   changes matter for CPU particle and geometry work, and for keeping the
@@ -200,6 +207,41 @@ reads add `Math.fround`.
   storage, not the dispatch.
 - `StructRef.set` from a tuple (`p.set0((x, y, z))`) compiles to plain
   `setFloat32` calls; the tuple is not allocated.
+- **`final` on the math classes changes nothing**, and **`extends js.Object`
+  would be the `BufferView` cost again**
+  (`experiments/scala-math/spikes/class-kind/`). A `Vec2`-shaped class in three
+  variants, allocating one per iteration, V8 / JSC:
+  - plain: 5.5 / 3.0 ns;
+  - `final`: 5.4 / 3.2 ns, the emitted JS identical up to field names. The
+    optimizer already knows the class has no subclasses from the whole program.
+    `final` is API intent only.
+  - `extends js.Object`: 311 / 9.9 ns. The constructor takes `...rest`, checks
+    each argument for `undefined` (default parameters), and runs
+    `Object.defineProperty` per field. Reads become `(+r.x)`. The fields keep
+    their names (`x`, `y`), which is the only gain.
+
+### 1.5 Other `js.Object` classes in trivalibs
+
+A `js.Object` class costs only when Scala.js has to construct it (§1.3, §1.4).
+`@js.native` facades (`GPUDevice`, `GPUQueue`, …, the Preact bindings) and
+non-native traits (`PixelFrames`, `PixelImage`, preact `Props`) describe objects
+that come from JS or from object literals. They have no constructor and cost
+nothing. That leaves four non-native classes in `src/`:
+
+| Class                          | Why `js.Object`                                                                                | Created                                                                                     | Verdict                                                                                                       |
+| ------------------------------ | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `BufferView` (`bufferdata`)    | none visible                                                                                   | per `StructArray` element access                                                            | roadmap §7 removes it from the core                                                                           |
+| `PanelBinding` (`panel.scala`) | none needed: every match on it is compile-time (`inline pair.value match`), no `instanceof`    | per `panel.binding(…)`, and per `bind("tex" := panel)` (wrapped in `PanelBinding(p)`), 29 call sites in sketches | **change**: plain `final class`. Also drops the prelude's type-alias workaround for it          |
+| `BlendFn`, `BlendState` (`enums.scala`) | passed as is into the pipeline descriptor (`blend = blendState`), so the field names must be WebGPU's | presets once; user values at setup; read once per new pipeline (cached by `blendKeyStr`)    | **optional**: plain `final class`es converted with `Obj.literal` in `getPipeline`; the gain is the removed prelude workaround, not speed |
+
+The prelude comment (`prelude/painter.scala`) explains the workaround: an
+`export` of a JS type is rejected by the Scala.js plugin, so these three classes
+are re-exported through hand-written aliases. Plain classes export normally.
+
+Per-frame object literals: each `paint` builds its render-pass descriptors
+(`Obj.literal(colorAttachments = …)`, clear values) and bind-group entries on a
+cache miss. Literals do not run `defineProperty` and cost tens of nanoseconds,
+far below the WebGPU calls they feed. They are not a candidate.
 
 ## 2. Measurements
 
@@ -410,70 +452,91 @@ become straight `getFloat32` / `setFloat32` sequences.
   large sketch, the bundle growth is small. Large ops (`inverse`, `matMul`,
   `perspective`, `lookAt`) should stay functions.
 
-## 5. Recommendations for trivalibs-scala
+### 4.3 Spike: `@inline` ref classes
 
-Ranked by measured effect on render-loop and setup paths. None is applied yet;
-each would get its own plan in the Scala repo, starting with a benchmark in
-`trivalibs-scala/bench/` from the workloads here.
+`experiments/scala-math/spikes/inline-class/Probe.scala`. Scala.js eliminates
+the allocation of a class annotated `@inline` when no instance escapes: it
+treats the instance as its fields. A vertex ref over a Float32Array,
 
-1. **Make the small vector and uniform-write ops `inline`.** That covers the
-   componentwise ops of `Vec2–4ImmutableOps` / `Vec2–4MutableOps`, scalar
-   broadcasts, `mix`, `dot`, `set` / `:=` for vectors and `Mat4MutableOps.set`.
-   It is the library's own `CLAUDE.md` rule for CPU helpers (no surviving
-   typeclass / given dispatch, verify in a `jsMode full` link), which the
-   current traits meet only in programs that link one representation. Measured:
-   2× on class operators, 4× on `StructRef` in-place math, 4.7× on in-place
-   particles (§4.1). Keep `inverse`, `matMul`, `perspective`, `lookAt`,
-   `fromTranslationRotationScale` as functions; check that their callers stay
-   monomorphic with a `smallestmodules` link of a real sketch.
-2. **Stop allocating a `js.Object` per `StructArray` element.** Either make
-   `BufferView` a plain Scala class (the library's `CLAUDE.md` already says to
-   try plain classes before `js.Object`), or add a cursor API for loops:
-   `val p = arr.cursor; while … p.seek(i)`. Measured: 1,300 → 18–28 ns per
-   particle on V8. Affects every CPU loop over vertex, instance or particle
-   data, at setup (geometry generation, `allocateAttribs` writes) and per frame.
-3. **Back 4-byte buffer fields with typed arrays.** `F32` / `U32` / `I32` fields
-   through `Float32Array` / `Uint32Array` / `Int32Array` views over the same
-   `ArrayBuffer`. WGSL uniform and storage layouts are 4-byte aligned, so the
-   offset is a word index. Keep `DataView` for 8- and 16-bit vertex formats.
-   Uploads are unchanged (same `ArrayBuffer`). Typed arrays are little-endian on
-   every platform WebGPU runs on. Measured: 2.2× (V8) and 4.2× (JSC) on a packed
-   loop, `FRef` vs `JRef` 1.3× / 2.3× on `mix`.
-4. **Consider typed-array storage for `Mat4` (and `Mat3`).** squint's
-   Float64Array-backed `mat4 * vec4` is 2.4–3.4× faster than Scala's 16 fields
-   (§2.3). It would also turn a uniform write into one `Float32Array.set`.
-   Measure `mat4 * mat4`, `inverse` and the camera path first; this is the
-   largest API change of the five.
-5. **Later, and only for heavy per-frame code:** an inline expression form for
-   in-place updates (`pos += vel * dt` without a temporary, §4.2), and writers
-   that compose straight into a uniform ref (`ref.setTRS(t, q, s)`). The sway
-   loop shows 4× and no garbage (§2.4), but per frame that is 9 µs. Low
-   priority.
+```scala
+@inline final class VRef(val a: Float32Array, val off: Int):
+  @inline def set0(x: Double, y: Double): Unit =
+    a(off) = x.toFloat
+    a(off + 1) = y.toFloat
 
-Not measured, worth a check in the Scala repo: every `BufferBinding.set` calls
-`device.queue.writeBuffer` at once, so a sketch with 64 animated paintings makes
-128 queue writes per frame. Deferring uploads to one flush per binding before
-`paint` may matter more than the math above.
+final class VArr(val a: Float32Array, val count: Int):
+  @inline def apply(i: Int): VRef = new VRef(a, i * 4)
 
-## 6. Comparison with the squint results
+v(i).set0(i * 0.5, i * 0.25)
+```
+
+compiles to the hand-written form, with no object:
+
+```js
+var a = v.e;
+var off = i$1 << 2;
+a[off] = Math.fround(x);
+a[(1 + off) | 0] = Math.fround(y);
+```
+
+So today's user syntax (`vertices(i).set0(…)`) can stay and cost nothing. The
+condition is that the ref never escapes. Today's geometry builders pass
+`verts(vi)` into a closure (`write(arr(si), verts(vi))`), which counts as
+escaping. Also visible: `.toFloat` emits `Math.fround`. A store into a
+Float32Array rounds anyway, so the call is redundant work.
+
+**Double in, no `Math.fround`**
+(`experiments/scala-math/spikes/inline-class/Float32Access.scala`). The standard
+facade types the elements as `Float`, so every store needs a `.toFloat`. Two
+ways around it, both measured to emit plain stores:
+
+```scala
+// 1. A second facade for the same JS class, with Double elements.
+@js.native @JSGlobal("Float32Array")
+class F32Array(len: Int) extends js.Object:
+  @JSBracketAccess def apply(i: Int): Double = js.native
+  @JSBracketAccess def update(i: Int, v: Double): Unit = js.native
+
+// 2. An opaque type over the standard facade, Double access by cast.
+opaque type F32 = Float32Array
+extension (a: F32)
+  inline def update(i: Int, v: Double): Unit =
+    a.asInstanceOf[js.Array[Double]](i) = v
+```
+
+```js
+a[i << 1] = 0.5 * i; // store: no Math.fround
+a[(1 + (i << 1)) | 0] = +a[i << 1] + 0.25; // read: a unary-plus number hint
+```
+
+The facade (1) is the safer choice. The cast in (2) is erased in `jsMode full`,
+but under `jsMode fast`'s checked casts a Float32Array is not a `js.Array` and
+the cast throws. A cast to the facade (`x.asInstanceOf[F32Array]`) checks
+`instanceof Float32Array` and passes, so the facade also converts to and from
+the standard type. The user-facing API takes `Double` (JS numbers) throughout;
+rounding to f32 happens in the store, as WebGPU expects.
+
+## 5. Comparison with the squint results
 
 Fastest form per workload, V8 / JSC, ns:
 
-| Workload                | squint, fastest idiomatic          | Scala, fastest idiomatic today  | Scala with §5.1–3 (prototype)                   | Scala hand-written, best storage |
+| Workload                | squint, fastest idiomatic          | Scala, fastest idiomatic today  | Scala prototype (§4; roadmap §7)                | Scala hand-written, best storage |
 | ----------------------- | ---------------------------------- | ------------------------------- | ----------------------------------------------- | -------------------------------- |
 | vec3 `mix`              | `#cpu` 1.77 / 1.52                 | `a.mix(b, t)` 13.35 / 11.44     | `FRef` in-place 7.41 / 4.33                     | 1.8 / 1.5–1.8                    |
 | particles               | `#cpu` 15.24 / 5.18                | in-place on class 37.47 / 28.48 | class in-place 7.90 / 12.27; cursor 17.5 / 10.1 | 5.1–5.7 / 2.8–4.2                |
 | particles, GPU layout   | (`#cpu` has no packed targets yet) | `StructArray` 1,300 / 67        | F32 cursor 18.4 / 10.1                          | 6.7 / 5.0                        |
 | vec3 + vec3, allocating | `mono` 7.60 / 3.84                 | 9.72 / 8.36                     | —                                               | —                                |
-| mat4 \* vec4            | `mono` 7.39 / 6.87                 | 17.87 / 23.15                   | — (§5.4)                                        | —                                |
+| mat4 \* vec4            | `mono` 7.39 / 6.87                 | 17.87 / 23.15                   | — (§7, phase 6)                                 | —                                |
 
 - **squint's `#cpu` is still the only idiomatic form at hand-written speed.** It
   scalarizes at compile time; the Scala prototypes keep vectors in memory, which
   costs 2–4× on V8 even when all dispatch is gone.
-- **Scala's packed-buffer story is better once §5.2–3 are done.** Typed
-  `StructArray` layouts with compile-time offsets exist today; `#cpu` has no
-  buffer targets yet (uniform-math-operators.md §9.3). The packed hand-written
-  loop (5.7 / 2.8) is the fastest particle variant measured on either side.
+- **Scala's packed-buffer story is better once the F32 buffers of §7 replace
+  `StructArray`.** Typed layouts with compile-time offsets exist today. The
+  roadmap keeps them and drops the per-element objects and the DataView. `#cpu`
+  has no buffer targets yet (uniform-math-operators.md §9.3). The packed
+  hand-written loop (5.7 / 2.8) is the fastest particle variant measured on
+  either side.
 - **Allocation-heavy code is slower in Scala** (combos, `mixOps`), most on JSC.
   The field-initialization and matrix-storage points above are the candidates.
 
@@ -484,13 +547,299 @@ goes through typeclasses, and the optimizer decides at link time, per program.
 Annotations (`inline`) and storage choices make it fast, as macros and storage
 choices do in squint.
 
-## 7. Open
+## 6. Open
 
 - The cause of the GCs in `mixClassHand` (§3).
 - Whether Scala's double field initialization blocks JSC's allocation removal
   (§3), and whether squint `defclass` fields initialized to `0.0` close the
   `class-inplace` gap (§3).
-- Uniform upload batching (§5).
+- Uniform upload batching (§7, phase 3).
 - Firefox, as in the squint document.
-- An inline-expression form for Scala (§4.2, §5.5): feasibility and compile
-  times.
+- An inline-expression form for Scala (§4.2, §7 "later"): feasibility and
+  compile times.
+
+## 7. Roadmap: F32 buffers and inline math for the Scala painter
+
+A plan to turn §1–4 into changes in trivalibs-scala. Each phase becomes its own
+plan document in the Scala repo (`documents/*.md`, with a Findings section),
+written when the phase starts. Nothing here is decided until then; names in code
+blocks are proposals.
+
+### 7.1 Scope
+
+What the library supports today, and what this roadmap keeps:
+
+- **Uniforms are f32 only.** `Float`, `Double` (written as f32), `Vec2–4`,
+  `Mat2–4`, and `UniformArray[T, N]` of those. The integer WGSL types (`Int`,
+  `UInt`, `IVec*`, `UVec*`) already have no CPU buffer representation
+  (`types.scala`: `UniformBuffer = EmptyTuple`), and `UniformArrayElem` rejects
+  them. Custom uniform structs do not exist.
+- **Vertex attributes are flat and f32 only.** `Float`, `Double`, `Vec2–4`
+  (`float32`…`float32x4`), one interleaved buffer per form, no nesting. `Mat*`
+  have no vertex format.
+- **So every GPU buffer the painter writes is a flat run of f32 at offsets known
+  at compile time.** That is a `Float32Array` with constant indices. The general
+  machinery (`StructArray` / `StructRef`, tuple-typed layouts, `F32` / `U8` / …
+  primitive tags, `DataView`, `BufferView`) is more than the painter needs, and
+  it is where the costs of §1.3 come from.
+- **`StructArray` leaves the core** (`graphics/buffers`, `graphics/geometry`,
+  `graphics/painter`, `graphics/shader`, the `*Buffer` givens in `math/cpu`). It
+  may stay in `utils/bufferdata.scala` as a general utility, unlinked by the
+  painter (dead-code elimination removes it from sketch bundles). It comes back
+  only with a use that needs mixed field types, most likely a compute-shader
+  buffer API, which is a distant wish, not planned here.
+- **CPU math keeps `Double` class fields.** Typed arrays appear only where a GPU
+  buffer is created and written. Reasons:
+  - Class fields with in-place writes match typed arrays on the particle loop
+    (`partClassHand` 5.1 / 4.2 vs packed Float64Array 5.7 / 2.8, §2.2).
+  - The large costs measured are dispatch and buffer refs, not field storage.
+  - An F32 switch for CPU math (Float32Array-backed vectors and matrices) would
+    lose precision. The rounding itself costs nothing: with the Double-typed
+    facade (§4.3) it happens inside the store. But every value stored back is
+    rounded to 24 bits of mantissa (about 7 decimal digits). That loss
+    accumulates where state is updated in place frame after frame (camera
+    position and rotation, animation time, particle integration). It also
+    hurts where large and small values meet (world positions far from the
+    origin, matrix inversion, long running `t`). The GPU computes in f32 anyway,
+    but each frame receives a fresh rounding of exact CPU state, so errors do
+    not compound. Against that, the switch would gain only the copy at upload,
+    which phase 3 makes one store per float.
+  - The one storage result against fields is `Mat4` (§2.3); phase 6 measures it
+    separately.
+
+### 7.2 Target design
+
+**`WGSLType` is the single source of truth.** Today the same eight value types
+(`Float`, `Double`, `Vec2–4`, `Mat2–4`) are described four times:
+
+| Where                                              | What it holds                                                         | Used by                                           |
+| -------------------------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------- |
+| `WGSLType` givens (`shader/types.scala`)           | `wgslName`, `vertexFormat`, `byteSize`, `alignment`                   | shader codegen; vertex layout (`byteSize`)        |
+| `WGSLType.AttribBuffer` / `UniformBuffer` members  | `StructArray` tuple layouts (`Vec3Buffer`, `Mat3PaddedBuffer`, …)     | `allocateAttribs` (`UniformBuffer` is unused)     |
+| `UniformValue` givens (`buffers/binding.scala`)    | uniform padding and write/read for the same types, again              | `BufferBinding`, `UniformArray`                   |
+| `UniformArrayElem` givens (`uniform_array.scala`)  | lanes per 16-byte row                                                 | `UniformArray`                                    |
+
+Beyond the repetition, the copies have drifted. `alignment` is read nowhere.
+`WGSLType[Mat3].byteSize` is 36, the packed attribute size, while WGSL's
+`mat3x3<f32>` occupies 48 bytes. That value works only because nothing uses
+`byteSize` for uniforms.
+
+The target keeps one given per type and moves everything there. Proposed shape:
+
+```scala
+/** Shader-side contract: every type a shade can name. */
+trait WGSLType[T]:
+  def wgslName: String
+  def vertexFormat: String
+  def isSampler: Boolean = false
+  def isDepthTexture: Boolean = false
+
+/** A WGSLType the CPU writes into GPU buffers, as f32 words. The only place
+  * that knows a value type's sizes, padding and conversion. */
+trait F32Type[T] extends WGSLType[T]:
+  type Floats <: Int         // packed, as a vertex attribute: Vec3 = 3, Mat3 = 9
+  type UniformFloats <: Int  // WGSL uniform layout incl. padding: Vec3 = 4, Mat3 = 12
+  type UniformAlign <: Int   // in floats: Float = 1, Vec2 = 2, Vec3/Vec4/Mat* = 4
+  type Lanes <: Int          // per 16-byte row in a uniform array: Float = 4, Vec2 = 2, else 1
+  def write(a: F32Array, off: Int, v: T): Unit         // packed
+  def writeUniform(a: F32Array, off: Int, v: T): Unit  // padded (Mat3: 3 × (3 + pad))
+  def read(a: F32Array, off: Int): T
+  def readUniform(a: F32Array, off: Int): T
+```
+
+- **One given per type.** `Float`, `Double`, `Vec2–4` and `Mat2–4` implement
+  `F32Type`. Textures, samplers and the integer types stay plain `WGSLType`s,
+  which matches today's rule that only f32 types have a CPU buffer
+  representation. The uniform and attribute APIs require `F32Type[T]`; an
+  `@implicitNotFound` message replaces `UniformArrayElem`'s for unsupported
+  types.
+- **Sizes are literal types**, read with `constValue`: `type Floats = 3`. Offsets
+  and strides of a named-tuple schema are summed at compile time from them, as
+  `TupleSize` / `FieldOffset` do now. Byte values for WebGPU descriptors are
+  `4 × Floats`. `byteSize` and `alignment` either go or are derived, so they
+  cannot disagree again.
+- **Writers are ordinary methods on the given, marked `@inline`.** Each call
+  site reaches its given as a known module (`summonInline[F32Type[Vec3]]`), so
+  the Scala.js optimizer resolves and inlines it, whatever other types are
+  linked. This differs from §1.1, where one trait body took the representation
+  as a parameter. `binding.set(mat)` becomes 16 direct stores, with no
+  `UniformValue` dispatch and no given accessors (§1.2). Phase 2 verifies this
+  in the emitted JS; abstract `inline def`s on the trait are the fallback, at the
+  cost of being callable only where the given is statically known.
+- **What it replaces:**
+  - in `types.scala`: `AttribBuffer` / `UniformBuffer`;
+  - `UniformValue` and `UniformLayout` (`binding.scala`);
+  - `UniformArrayElem`;
+  - `AttribLayout` / `AttribLayoutHelper` (`attributes.scala`);
+  - `FieldWriter` / `VertexLayout` (`geometry/buffers.scala`);
+  - the runtime offset sums in `layouts.scala` (`fieldByteSizes`,
+    `calculateOffsets`).
+
+  All of them become walks over a named tuple, summoning `F32Type` per field.
+- **Uniform wrappers** (`VertexUniform[T]`, `FragmentUniform[T]`,
+  `SharedUniform[T]`) keep forwarding to `inner`; the type members forward as
+  `inner.Floats`, …. A binding's value type is the unwrapped `T`, so the
+  wrappers need no writers.
+- **The buffer type is a Double-typed `Float32Array` facade** (§4.3, variant 1).
+  Every write API takes `Double`; stores emit `a[i] = v` with no `Math.fround`,
+  and the rounding to f32 happens in the store itself. `F32Type` and the refs
+  use this facade; interop with code expecting the standard `Float32Array`
+  (`writeBuffer`, `.buffer`) is a checked cast that passes in both link modes.
+- **Refs are `@inline final class`es** over `(F32Array, offset)` (§4.3). They
+  keep the `v(i).set0(…)` syntax, write through `F32Type.write`, and allocate
+  nothing as long as no ref escapes.
+
+### 7.3 Phases
+
+**Phase 0: baseline and guard rails.**
+
+- Port the workloads to `trivalibs-scala/bench/`, in the shape of
+  `NoiseBench.scala` (`mix`, particles, combos, sway, camera from §2), plus
+  three buffer workloads:
+  - vertex fill: `allocateAttribs` + `set0` / `set1` for 100k vertices;
+  - `toBufferedGeometry` of a mesh;
+  - `line2d` stroke geometry, sized like a `paintings/` sketch.
+- Record the bundle size of two sketches (`base-triangle`, `rooms/canvases`,
+  gzipped).
+- Add a check over a `smallestmodules` / `jsMode full` link of the examples. It
+  lists op functions that call through `$thiz.` or a given accessor, and any
+  `defineProperty` constructor reached from painter code. It is the Scala
+  counterpart of uniform-math-operators.md §9.3's grep test.
+- Exit: baseline numbers in the phase plan. The check reports today's findings
+  (§1.1–1.3).
+
+**Phase 1: inline the small math ops.**
+
+- Mark `inline` the componentwise ops and scalar broadcasts of
+  `Vec2–4ImmutableOps` / `Vec2–4MutableOps`, plus `mix`, `dot`, `length`,
+  `normalize`, `set` / `:=`, and `Mat*MutableOps.set`.
+- Large ops stay functions: `inverse`, `matMul`, `perspective`, `lookAt`,
+  `fromTranslationRotationScale`.
+- Declare the math classes `final` (`Vec2–4`, `Mat2–4`, `Quat`). It does not
+  change the emitted JS (§1.4). It states that the classes are values, and it
+  keeps users from subclassing them. They stay plain Scala classes, never
+  `js.Object` (311 vs 5.5 ns per allocation on V8, §1.4).
+- Independent of the buffer work and the largest measured CPU gain (2× class
+  operators, 4–4.7× in-place, §4.1). It comes first.
+- Exit: the phase 0 check finds no dispatching op function in the examples'
+  link; benchmarks; bundle size within a few percent.
+
+**Phase 2: F32 core.**
+
+- `F32Type` on the existing `WGSLType` givens (the f32 ones change their parent
+  trait; nothing else in them moves yet).
+- Compile-time offsets for named-tuple schemas.
+- The `@inline` ref class and the Double-typed `Float32Array` facade.
+- munit tests for every size and padding rule against today's sources: `TupleSize`
+  of `AttribBuffer` / `UniformValue` layouts, `UniformArrayElem` lanes, and
+  `byteSize`, except where the test documents a fix (`Mat3` as a uniform: 48
+  bytes).
+- Spike first: the `@inline` writer reached through `summonInline` inlines in a
+  program that links every `F32Type` (§7.2).
+- Nothing uses it yet.
+- Exit: tests green; the emitted JS of a test sketch-sized write shows direct
+  stores.
+
+**Phase 3: uniform bindings on Float32Array.**
+
+- `BufferBinding[T]` (one type parameter; `F` is gone) holds an `F32Array`
+  sized from `UniformFloats` (≥ 4). `set` writes through `F32Type.writeUniform`
+  and uploads.
+- `UniformArray` writes with a stride from `UniformFloats` / `Lanes`. `get`
+  reads back.
+- `UniformValue`, `UniformLayout` and `UniformArrayElem` are deleted.
+- `PanelBinding` becomes a plain `final class` (§1.5). Optionally `BlendFn` and
+  `BlendState` too, converted to a literal where the pipeline is created. Both
+  remove a type-alias workaround in the prelude.
+- `update(ref => …)` exposes a `StructRef`. No example or sketch calls it. Drop
+  it, or replace it with a typed form.
+- **Upload batching**: measure first how many `writeBuffer` calls a sketch makes
+  per frame (`rooms/canvases`: 2 per painting). If it matters, mark bindings
+  dirty on `set` and upload once per binding before the first `paint` that reads
+  it.
+- Exit:
+  - `painter_typed_bindings`, `uniform_array_gradient` and all sketches compile;
+  - `UniformArray` and headless painter tests green;
+  - the emitted `binding.set(mat4)` is 16 stores and one upload.
+
+**Phase 4: vertex attributes and geometry on Float32Array.**
+
+- `allocateAttribs[A](n)` returns a `VertexArray[A]` (proposal): a
+  `Float32Array` with a vertex count, stride from `A` at compile time,
+  `v(i).set0(…)`… through the `@inline` ref. The examples' vertex code stays as
+  it is.
+- `BufferedGeometry` and `Form.upload` take it.
+- The geometry builders (`geometry/buffers.scala`) write each field through
+  `F32Type.write` at a compile-time offset. That replaces `FieldWriter`,
+  `VertexLayout` and the `WriteOne` closures, so refs no longer escape into
+  closures.
+- `AttribLayout` goes. `layouts.scala`'s `vertexBufferLayout` takes its offsets
+  and stride from the same compile-time sums, so the vertex descriptor and the
+  buffer writes come from one computation.
+- `line2d`'s `writeLineVert` writes its 8 floats directly.
+- Type names that users see change:
+  - `BufferedGeometry[LineAttribsBuffer]` in 4 sketches and 1 example: keep
+    `LineAttribsBuffer` as an alias for one release, or rename it `LineAttribs`;
+  - `RandomLines`' `StructArray[Vec2Buffer *: EmptyTuple]`.
+- Optional, decide in the plan: type `Form` by its attribute schema, so a
+  mismatch between a form and a shade's `Attribs` becomes a compile error. Today
+  `Form` is untyped and the layout comes from the shade alone.
+- Exit:
+  - every example and sketch builds;
+  - the vertex-fill and `line2d` benchmarks show the gain;
+  - no `BufferView` constructor in the link of a geometry example.
+
+**Phase 5: remove `StructArray` from the core.**
+
+- Delete the `*Buffer` givens from `math/cpu` (`Vec2–4Buffer`, `Vec2–4dBuffer`,
+  `Mat2–4Buffer`, `Mat3PaddedBuffer`) and the `Mat2Buffer.given` imports in two
+  examples.
+- Delete `WGSLType`'s `AttribBuffer` / `UniformBuffer` members, and `byteSize` /
+  `alignment` if phase 2 derived them.
+- This also removes the representations that made the ops traits polymorphic
+  (§1.1); with phase 1 done it no longer matters for speed, but it removes code.
+- `utils/bufferdata.scala` stays as a general utility with its tests, outside
+  the painter's imports. If it stays, give `BufferView` the §4 fixes (plain or
+  `@inline` class, typed-array views for 4-byte fields), so a later compute API
+  starts from the fast form.
+- Update the guides (`sketch-authoring-guide.md`, `gotchas.md`), the
+  `write-sketch` skill and the API docs.
+- Exit: `base-triangle` and `rooms/canvases` bundles no longer link
+  `trivalibs.bufferdata`; bundle sizes against phase 0.
+
+**Phase 6: CPU math storage, only if measured worth it.**
+
+- With phases 1–5 done, rerun `mat4 * vec4`, `mat4 * mat4`, `inverse` and the
+  camera path.
+- If Mat4's 16 fields still cost 2× or more against a Float64Array-backed
+  version (§2.3), back `Mat4` (and `Mat3`) by a Float64Array behind the same
+  field API.
+- Investigate the `mixClassHand` GCs (§3) here too.
+- Exit: a decision with numbers, either way.
+
+**Later, not planned:**
+
+- an inline expression form for in-place updates (`pos += vel * dt` without a
+  temporary, §4.2);
+- fused writers into uniform refs (`setTRS(t, q, s)`): 4× on the sway loop, but
+  9 µs per frame (§2.4);
+- a compute-shader buffer API, which brings back a general struct layout,
+  rebuilt on the §4 findings.
+
+### 7.4 Order and risk
+
+| Phase | Changes for users                                 | Measured gain (this document)                         | Risk                                      |
+| ----- | ------------------------------------------------- | ----------------------------------------------------- | ----------------------------------------- |
+| 0     | none                                              | —                                                     | none                                      |
+| 1     | none (same API)                                   | 2× operators, 4–4.7× in-place (§4.1)                  | code size; compile time of inline bodies  |
+| 2     | none                                              | — (enabler)                                           | padding rules: covered by tests           |
+| 3     | `BufferBinding` loses `F`; `update` goes          | `StructRef` writes 38 → 9.5 ns with inline ops (§4.1) | std140 edge cases (`Mat3`, arrays)        |
+| 4     | `StructArray` / `LineAttribsBuffer` in type names | 1,300 → hand-written speed per element (§2.2, §4.3)   | geometry builders are the largest rewrite |
+| 5     | `*Buffer` givens gone                             | bundle size (to measure)                              | low                                       |
+| 6     | maybe none (same field API)                       | up to 2.4–3.4× on `mat4 * vec4` (§2.3)                | to be measured                            |
+
+Phases 1 and 3 change per-frame code; phase 4 changes setup code (geometry
+building), which matters for load time in the stroke paintings. The sketches
+repo builds against the submodule, so every phase ends with
+`bun run sketches -k` in sketches-scala, besides the library's own tests and
+examples.
